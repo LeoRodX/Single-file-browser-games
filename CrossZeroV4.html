@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Умные крестики-нолики с ботом</title>
+    <script type="text/javascript" src="https://gc.kis.v2.scr.kaspersky-labs.com/FD126C42-EBFA-4E12-B309-BB3FDD723AC1/main.js?attr=pRZBLXy4zwgD_C_8Tr2zj35ctJFdB7p_LA8SIWc_DBla5oTxDsSh9E7m_S3JErYT-pCMLaz4Pyzwd7ChZYd-PIZu266ssiAk2dgFLqVnfl_ToSJ-BFnvkYULIlHMnU91gXPqIHhzSnVff0awPxwMX7qmN5wdtcKU4MjTGgnf08vWre4Re6G4E0e_U7VHj-6TBAPjAhELA4acIswhXrMwH-3546Hdg_6cqzgSQarpA5yG-RzHw5oxnxGPYIkfBjp_1hNZBQi4BrnwlNXFuX2Poerg9iQaj6pVB3YkKSI7A_WrBGn9qN3Pg5k-VLn2Eusy9SkUFfHO69rvB_MCI8DymNwvHi6avzlHi49997s1fQXjUbatY_GjLzhRdUjNqLwA1ggbLPmL_AUBQxPI_f7nmMTLM-e0UC3VtQDq5CyCRxB8V90L0QZziHulQXZ8ESPC_gBbccQMCqRmln9PMNT6AOgSHmVkpfHCUQXTSGzEvXH5FTsCBSH6tMQv96GZJVCYEZEbMl7Kydxbk7skhmmG4CjT8Za2Vpi-c7UQoKRvHkuJwKuYnshRonIGG14oREw96xo5kITesKco33XsIDwmVbXWM7PymgRWGwQN2ez_fBjnQnuhCgpLAY-iT9FbDDkvLqMaR_2l8i8e5suMSO37Dg" charset="UTF-8"></script><style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: 'Arial Rounded MT Bold', sans-serif;
+            background: linear-gradient(45deg, #1a1a1a, #2a2a2a);
+            min-height: 100vh;
+            margin: 0;
+            padding: 36px;
+            color: white;
+        }
+
+        h1 {
+            color: #fff;
+            text-shadow: 0 0 27px rgba(255,255,255,0.5);
+            margin-bottom: 54px;
+            font-size: 57.6px;
+        }
+
+        #board {
+            display: grid;
+            grid-template-columns: repeat(3, 198px);
+            gap: 18px;
+            background: rgba(255,255,255,0.1);
+            padding: 27px;
+            border-radius: 36px;
+            box-shadow: 0 0 54px rgba(0,255,255,0.2);
+        }
+
+        .cell {
+            width: 198px;
+            height: 198px;
+            background: rgba(255,255,255,0.05);
+            border: 3.6px solid rgba(255,255,255,0.1);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 108px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-radius: 27px;
+        }
+
+        .cell:hover {
+            background: rgba(255,255,255,0.1);
+            transform: scale(1.05);
+        }
+
+        .cell.x {
+            color: #ff3366;
+            text-shadow: 0 0 36px #ff3366;
+        }
+
+        .cell.o {
+            color: #33ff99;
+            text-shadow: 0 0 36px #33ff99;
+        }
+
+        .cell.win {
+            animation: winGlow 1s infinite;
+        }
+
+        #status {
+            font-size: 50.4px;
+            margin: 45px 0;
+            padding: 27px 54px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 18px;
+            text-align: center;
+        }
+
+        button {
+            padding: 27px 72px;
+            font-size: 36px;
+            background: linear-gradient(45deg, #ff3366, #33ff99);
+            color: white;
+            border: none;
+            border-radius: 54px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 36px;
+            letter-spacing: 1.8px;
+        }
+
+        button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 54px rgba(51,255,153,0.5);
+        }
+
+        @keyframes winGlow {
+            0% { box-shadow: 0 0 18px rgba(255,255,153,0.5); }
+            50% { box-shadow: 0 0 54px rgba(255,255,153,0.9); }
+            100% { box-shadow: 0 0 18px rgba(255,255,153,0.5); }
+        }
+    </style>
+</head>
+<body>
+    <h1>Крестики VS Нолики</h1>
+    <div id="status">Ваш ход (Крестики)</div>
+    <div id="board"></div>
+    <button onclick="newGame()">Новая игра</button>
+
+    <script>
+        // JavaScript код остаётся без изменений
+        let currentPlayer = 'X';
+        let gameActive = true;
+        const boardState = ['', '', '', '', '', '', '', '', ''];
+        const winCombos = [
+            [0, 1, 2], [3, 4, 5], [6, 7, 8],
+            [0, 3, 6], [1, 4, 7], [2, 5, 8],
+            [0, 4, 8], [2, 4, 6]
+        ];
+
+        function initBoard() {
+            const board = document.getElementById('board');
+            board.innerHTML = '';
+            for (let i = 0; i < 9; i++) {
+                const cell = document.createElement('div');
+                cell.classList.add('cell');
+                cell.setAttribute('data-index', i);
+                cell.addEventListener('click', handleCellClick);
+                board.appendChild(cell);
+            }
+        }
+
+        function handleCellClick(e) {
+            if (!gameActive) return;
+            
+            const index = e.target.getAttribute('data-index');
+            if (boardState[index] !== '') return;
+
+            makeMove(index, 'X');
+            const winningCombo = checkWin('X');
+            
+            if (winningCombo) {
+                setStatus('Победа! Вы выиграли! 🎉');
+                highlightWinCombo(winningCombo);
+                gameActive = false;
+                return;
+            }
+            
+            if (isBoardFull()) {
+                setStatus('Ничья! 🤝');
+                gameActive = false;
+                return;
+            }
+
+            setTimeout(botMove, 600);
+        }
+
+        function botMove() {
+            if (!gameActive) return;
+            
+            let bestMove = findWinningMove('O');
+            if (bestMove === -1) bestMove = findWinningMove('X');
+            if (bestMove === -1) bestMove = getRandomMove();
+
+            makeMove(bestMove, 'O');
+            const winningCombo = checkWin('O');
+            
+            if (winningCombo) {
+                setStatus('Бот победил! 😢');
+                highlightWinCombo(winningCombo);
+                gameActive = false;
+                return;
+            }
+            
+            if (isBoardFull()) {
+                setStatus('Ничья! 🤝');
+                gameActive = false;
+            }
+        }
+
+        function findWinningMove(player) {
+            for (let combo of winCombos) {
+                let cells = combo.map(index => boardState[index]);
+                let playerCount = 0;
+                let emptyIndex = -1;
+                
+                for (let i = 0; i < cells.length; i++) {
+                    if (cells[i] === player) playerCount++;
+                    else if (cells[i] === '') emptyIndex = combo[i];
+                }
+                
+                if (playerCount === 2 && emptyIndex !== -1) return emptyIndex;
+            }
+            return -1;
+        }
+
+        function getRandomMove() {
+            const emptyCells = boardState
+                .map((cell, index) => cell === '' ? index : null)
+                .filter(cell => cell !== null);
+            return emptyCells.length > 0 
+                ? emptyCells[Math.floor(Math.random() * emptyCells.length)]
+                : -1;
+        }
+
+        function makeMove(index, player) {
+            boardState[index] = player;
+            const cell = document.querySelector(`[data-index="${index}"]`);
+            cell.textContent = player;
+            cell.classList.add(player.toLowerCase());
+            currentPlayer = player === 'X' ? 'O' : 'X';
+            setStatus(player === 'X' ? 'Ход бота (Нолики)' : 'Ваш ход (Крестики)');
+        }
+
+        function checkWin(player) {
+            return winCombos.find(combo => 
+                combo.every(index => boardState[index] === player)
+            );
+        }
+
+        function highlightWinCombo(combo) {
+            combo.forEach(index => {
+                document.querySelector(`[data-index="${index}"]`).classList.add('win');
+            });
+        }
+
+        function isBoardFull() {
+            return boardState.every(cell => cell !== '');
+        }
+
+        function setStatus(text) {
+            document.getElementById('status').textContent = text;
+        }
+
+        function newGame() {
+            currentPlayer = 'X';
+            gameActive = true;
+            boardState.fill('');
+            initBoard();
+            setStatus('Ваш ход (Крестики)');
+            document.querySelectorAll('.cell').forEach(cell => {
+                cell.classList.remove('win', 'x', 'o');
+                cell.textContent = '';
+            });
+        }
+
+        initBoard();
+    </script>
+</body>
+</html>

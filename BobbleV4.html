@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>3D Пушка vs Шары</title>
+    <script type="text/javascript" src="https://gc.kis.v2.scr.kaspersky-labs.com/FD126C42-EBFA-4E12-B309-BB3FDD723AC1/main.js?attr=RA63b-8PPYOnH5qZ1SG4FQkYpd0TlWNZ680DkedCeyJ8-_XzD-KqvmQYm8OK-Q68hP9MJtvOHjeXQkBJXBItaBZ9KW9lcHyFkPhe1aX1wIzGoD-UM2nsHnt7cF3zVeb6TmmXx7x1V6IKBSkUZbn3djeLOkhr7dcYxM0xA_aPKoEiSLryAzrcd9qKm96ah6zzqy3AGi3s2d_Y2i-nkxMo6mcCZ3rFnpgovZOx7bJ3RhibvLFmjp8nF7Z7Mpk3aDEWXz63pjP41WHXztzpO3QZuS3uMbl2XBCKyhyWra9fcDiQAPYw8XCekdpN_duqhVLlGuMJqrixsT_TPwi1A0FYjNvY12pgcp48gZBXlwhgB3dryo_XjYWEOI-GAuYS5sY1lGhCWZgVSw6FQzXJ5Oq8pGEGZiVFbJNjyyaazxy2Q8RmmyzOcGdg3KRBdwO9oRYA1W7jio_cR3PIQAXrwp2rqL-49zV7xyml925fQIjgDv7I13EfUysQIEMngxnWxiq_0ALmGCtM73PcU9ivjNuDS8qJGbuo98VFqdNSl7p1ip6UGFiIm4Z2L0O-F7E76K-Z2w1oplAcY4VyOzSiPOVzq6GmE5mym7K84Z_9XwkanDQgUTP7xw9zRaxoGse9i8TZoNGS7N5LS2EjQd_3_PO18A" charset="UTF-8"></script><style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            touch-action: none;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            color: white;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #gameCanvas {
+            background: transparent;
+        }
+
+        #ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .joystick {
+            position: absolute;
+            bottom: 30px;
+            width: 80px;
+            height: 80px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+            backdrop-filter: blur(5px);
+            border: 2px solid rgba(255,255,255,0.3);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            cursor: pointer;
+            user-select: none;
+            transition: transform 0.1s;
+        }
+
+        .joystick.pressed {
+            transform: scale(0.9);
+        }
+
+        #leftButton {
+            left: 20px;
+        }
+
+        #rightButton {
+            right: 20px;
+        }
+
+        #shootButton {
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 100px;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <div id="ui">
+            <div id="score">Очки: 0</div>
+            <div id="lives">❤️❤️❤️</div>
+        </div>
+        <div class="joystick" id="leftButton">←</div>
+        <div class="joystick" id="shootButton">🔫</div>
+        <div class="joystick" id="rightButton">→</div>
+        <canvas id="gameCanvas"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        let score = 0;
+        
+        // Размеры экрана
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resize();
+        window.addEventListener('resize', resize);
+
+        // 3D Пушка
+        const cannon = {
+            x: canvas.width/2,
+            y: canvas.height - 50,
+            length: 60,
+            angle: -Math.PI/2,
+            color: '#FF6B6B',
+            minAngle: -3 * Math.PI/4,
+            maxAngle: -Math.PI/4
+        };
+
+        // Элементы игры
+        const bullets = [];
+        const balls = [];
+        const colors = ['#FF5252', '#4CAF50', '#2196F3', '#FFEB3B', '#E91E63'];
+        
+        // Обработчики кнопок
+        function handleButtonPress(e) {
+            e.preventDefault();
+            e.currentTarget.classList.add('pressed');
+        }
+
+        function handleButtonRelease(e) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('pressed');
+        }
+
+        // Левая кнопка
+        const leftButton = document.getElementById('leftButton');
+        leftButton.addEventListener('touchstart', (e) => {
+            handleButtonPress(e);
+            // Поворот и ограничение угла
+            const newAngle = cannon.angle - Math.PI/8;
+            cannon.angle = Math.max(newAngle, cannon.minAngle);
+            // Автоматический выстрел после поворота
+            shootBullet();
+        });
+        leftButton.addEventListener('touchend', handleButtonRelease);
+        leftButton.addEventListener('touchcancel', handleButtonRelease);
+
+        // Правая кнопка
+        const rightButton = document.getElementById('rightButton');
+        rightButton.addEventListener('touchstart', (e) => {
+            handleButtonPress(e);
+            // Поворот и ограничение угла
+            const newAngle = cannon.angle + Math.PI/8;
+            cannon.angle = Math.min(newAngle, cannon.maxAngle);
+            // Автоматический выстрел после поворота
+            shootBullet();
+        });
+        rightButton.addEventListener('touchend', handleButtonRelease);
+        rightButton.addEventListener('touchcancel', handleButtonRelease);
+
+        // Кнопка огня (оставляем оригинальную функциональность)
+        const shootButton = document.getElementById('shootButton');
+        shootButton.addEventListener('touchstart', (e) => {
+            handleButtonPress(e);
+            shootBullet();
+        });
+        shootButton.addEventListener('touchend', handleButtonRelease);
+        shootButton.addEventListener('touchcancel', handleButtonRelease);
+        // Игровой цикл
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function update() {
+            // Движение пуль
+            bullets.forEach((bullet, i) => {
+                bullet.x += bullet.speed * Math.cos(bullet.angle);
+                bullet.y += bullet.speed * Math.sin(bullet.angle);
+                
+                if(bullet.y < -50) bullets.splice(i, 1);
+            });
+
+            // Генерация шаров
+            if(Math.random() < 0.03) {
+                balls.push({
+                    x: Math.random() * canvas.width,
+                    y: -50,
+                    radius: 25 + Math.random() * 25,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    speed: 2 + Math.random() * 3
+                });
+            }
+
+            // Обработка столкновений
+            balls.forEach((ball, i) => {
+                ball.y += ball.speed;
+                if(ball.y > canvas.height + 100) balls.splice(i, 1);
+                
+                bullets.forEach((bullet, j) => {
+                    const dx = ball.x - bullet.x;
+                    const dy = ball.y - bullet.y;
+                    if(Math.sqrt(dx*dx + dy*dy) < ball.radius + 5) {
+                        balls.splice(i, 1);
+                        bullets.splice(j, 1);
+                        score += 100;
+                        document.getElementById('score').textContent = `Очки: ${score}`;
+                    }
+                });
+            });
+        }
+
+        function draw() {
+            // Фон
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 3D Пушка
+            ctx.save();
+            ctx.translate(cannon.x, cannon.y);
+            ctx.rotate(cannon.angle + Math.PI/2);
+            
+            ctx.fillStyle = cannon.color;
+            ctx.shadowColor = 'rgba(0,0,0,0.5)';
+            ctx.shadowBlur = 10;
+            
+            // Основание пушки
+            ctx.beginPath();
+            ctx.roundRect(-15, -20, 30, 40, 10);
+            ctx.fill();
+            
+            // Ствол
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(0, -cannon.length);
+            ctx.lineWidth = 15;
+            ctx.strokeStyle = '#607D8B';
+            ctx.stroke();
+            
+            ctx.restore();
+
+            // Пули
+            bullets.forEach(bullet => {
+                ctx.beginPath();
+                ctx.arc(bullet.x, bullet.y, 8, 0, Math.PI*2);
+                ctx.fillStyle = '#FFD700';
+                ctx.shadowColor = '#FFD700';
+                ctx.shadowBlur = 20;
+                ctx.fill();
+            });
+
+            // Шары
+            balls.forEach(ball => {
+                const gradient = ctx.createRadialGradient(
+                    ball.x, ball.y, 0,
+                    ball.x, ball.y, ball.radius
+                );
+                gradient.addColorStop(0, 'white');
+                gradient.addColorStop(0.8, ball.color);
+                
+                ctx.beginPath();
+                ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI*2);
+                ctx.fillStyle = gradient;
+                ctx.shadowColor = ball.color;
+                ctx.shadowBlur = 30;
+                ctx.fill();
+            });
+        }
+
+        function shootBullet() {
+            bullets.push({
+                x: cannon.x + Math.cos(cannon.angle) * cannon.length,
+                y: cannon.y + Math.sin(cannon.angle) * cannon.length,
+                angle: cannon.angle,
+                speed: 15
+            });
+        }
+
+        // Запуск игры
+        gameLoop();
+    </script>
+</body>
+</html>

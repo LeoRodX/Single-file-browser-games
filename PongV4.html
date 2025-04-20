@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>3D Pong - Русская Версия</title>
+    <script type="text/javascript" src="https://gc.kis.v2.scr.kaspersky-labs.com/FD126C42-EBFA-4E12-B309-BB3FDD723AC1/main.js?attr=1uMz3dQwf17ut7XCqz65CI5g4peglJqyRqwWiz0mW7TS5sZ9dmLYS5RZs3Z1LZwMHb7H_-WopZRVJLFiTu_teypWMxZnvaS2_DYFE0Gw5kBZb5vRv7JUbjGW9HhetfmYse-HsmDXz_H_KcuXJU9OmDluplL97Q5miHtETwlP1SJN-ulNqstCX_RS0pjrwQzySBn5GI9NwVyRPnwSffOh156yGYA7t4RX1EYBOHqA-wBF_6ExsZ1sr0Stn3vPjxLn6VYkmwI2N4Cu43XJqRHYVQhmOEZb13R1ENbhcDt_chOoDPbuEWmwqo1NLdZqcYTmiIC4YTMSW99OVgEh8k4aGHTqzzQ1XuZUguERJ-nR3IkjsMlbYGqXdiGeq7bSG-L2zxKD1Uln2hf4NO3LRIG5rr3PJcu4AfDi6AvfBYwCPR89ytsgpa0p81nSL6dx9eWBoJ-K_UKLOTyhtDUAJPnIdptoeSFGtGO7VVteh46gJg4krWS-XF1C8BwbEmnaKoC8cBHW8U5zhL8DP6eWLlYl-owFdvL4TMyX1hKGWipxdF4k5BOss88npLm__lLUdBw5XpCbTIJbGVeKSzyz2ilgE38VRrV6oF4KFjatNlNVZg6Cq5nWTvXHgGPE1oEBmmWFEE4dUWTbTTeB8xg15N440A" charset="UTF-8"></script><style>
+        body {
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: #1a1a1a;
+            color: #fff;
+            font-family: 'Arial', sans-serif;
+            touch-action: none;
+            overflow: hidden;
+        }
+        #gameCanvas {
+            border: 3px solid #4a4a4a;
+            border-radius: 10px;
+            box-shadow: 0 0 50px rgba(0, 167, 255, 0.3);
+        }
+        #score {
+            font-size: 32px;
+            margin: 20px;
+            text-shadow: 0 0 10px #00ff88;
+        }
+        #startButton {
+            padding: 20px 40px;
+            font-size: 24px;
+            margin: 30px;
+            background: linear-gradient(45deg, #00ff88, #00b4ff);
+            border: none;
+            color: #1a1a1a;
+            border-radius: 25px;
+            cursor: pointer;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div id="score">Счёт: 0</div>
+    <canvas id="gameCanvas"></canvas>
+    <button id="startButton">НОВАЯ ИГРА</button>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+        const startButton = document.getElementById('startButton');
+
+        // Настройки игры
+        const paddleWidth = 100;
+        const paddleHeight = 20;
+        const ballSize = 15;
+        let score = 0;
+        
+        // Размеры поля
+        function resizeCanvas() {
+            canvas.width = Math.min(window.innerWidth - 40, 800);
+            canvas.height = Math.min(window.innerHeight - 200, 600);
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // Позиции объектов
+        let playerX = canvas.width/2 - paddleWidth/2;
+        let ball = {
+            x: canvas.width/2,
+            y: 100,
+            speedX: 7,
+            speedY: 7
+        };
+
+        // Управление
+        let touchX = null;
+
+        // Обработчики событий
+        canvas.addEventListener('touchstart', handleTouch);
+        canvas.addEventListener('touchmove', handleTouch);
+        
+        function handleTouch(e) {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            touchX = e.touches[0].clientX - rect.left;
+            playerX = Math.min(Math.max(touchX - paddleWidth/2, 0), canvas.width - paddleWidth);
+        }
+
+        // Обновление игры
+        function update() {
+            // Движение мяча
+            ball.x += ball.speedX;
+            ball.y += ball.speedY;
+
+            // Коллизии со стенами
+            if(ball.x < 0 || ball.x > canvas.width) ball.speedX *= -1;
+            if(ball.y < 0) ball.speedY *= -1;
+
+            // Коллизия с платформой
+            if(ball.y > canvas.height - paddleHeight - 30 &&
+               ball.x > playerX - 10 &&
+               ball.x < playerX + paddleWidth + 10) {
+                ball.speedY *= -1.1;
+                ball.speedX *= 1.05;
+                score++;
+            }
+
+            // Проигрыш
+            if(ball.y > canvas.height) {
+                resetBall();
+                score = 0;
+            }
+
+            scoreElement.textContent = `Счёт: ${score}`;
+        }
+
+        function resetBall() {
+            ball.x = canvas.width/2;
+            ball.y = 100;
+            ball.speedX = 7 * (Math.random() > 0.5 ? 1 : -1);
+            ball.speedY = 7;
+        }
+
+        // Отрисовка
+        function draw() {
+            // Фон
+            ctx.fillStyle = '#1a1a1a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Платформа
+            ctx.beginPath();
+            ctx.roundRect(playerX, canvas.height - paddleHeight - 10, paddleWidth, paddleHeight, 10);
+            ctx.fillStyle = '#00ff88';
+            ctx.shadowColor = '#00ff88';
+            ctx.shadowBlur = 20;
+            ctx.fill();
+
+            // Мяч
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ballSize, 0, Math.PI*2);
+            ctx.fillStyle = '#00b4ff';
+            ctx.shadowColor = '#00b4ff';
+            ctx.shadowBlur = 30;
+            ctx.fill();
+
+            // Сброс теней
+            ctx.shadowBlur = 0;
+        }
+
+        // Игровой цикл
+        let gameRunning = false;
+        function gameLoop() {
+            if(gameRunning) {
+                update();
+                draw();
+                requestAnimationFrame(gameLoop);
+            }
+        }
+
+        startButton.addEventListener('click', () => {
+            gameRunning = true;
+            startButton.style.display = 'none';
+            resetBall();
+            gameLoop();
+        });
+
+        // Первоначальная отрисовка
+        draw();
+    </script>
+</body>
+</html>
